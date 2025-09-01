@@ -34,11 +34,11 @@ pip install pygame numpy matplotlib
 ### **File Setup**
 
 1. Place the maze\_runner.py script in a directory.  
-2. Place the following image files in the **same directory**:  
-   * Brick\_Wall\_023\_basecolor.jpg (for the walls)  
-   * image\_5cf17c.png (the skull for traps)  
-   * image\_5ced78.png (the key)  
-   * image\_5cea70.png (the gate for the goal)
+2. Place the following image files in the **Assets directory**:  
+   * Brick\_Wall.png (for the walls)  
+   * trap.png (the traps)  
+   * key.png (the key)  
+   * goal.png (the goal)
 
 *The code will gracefully fall back to solid colors if the images are not found.*
 
