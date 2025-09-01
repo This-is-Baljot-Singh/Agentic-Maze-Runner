@@ -235,17 +235,38 @@ def main():
         agent.load(); agent.epsilon = 0; final_win_rate = 100.0
     else:
         print("Starting training for strategic agent...")
+        running = True
         for episode in range(1, TOTAL_EPISODES + 1):
+            if not running: break
+            
             if (episode - 1) % NEW_MAZE_FREQUENCY == 0:
                 game.generate_maze()
 
             state = game.reset(); done = False; is_win = False; strategic_steps = 0
             
+            current_path = None # To hold the path for visualization
+            
             while not done and strategic_steps < MAX_STRATEGIC_STEPS:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT: running = False
+                if not running: break
+
                 action = agent.choose_action(state)
+                strategy = "GO FOR KEY" if action == 0 and not game.has_key else "GO FOR GOAL"
                 target_pos = game.key_pos if action == 0 and not game.has_key else game.goal_pos
                 path = a_star_path(game.grid, game.agent_pos, target_pos)
                 
+                if VISUALIZE_TRAINING:
+                    current_path = path
+                    screen.fill(GRAY)
+                    draw_grid(screen, game, wall_texture, trap_img, key_img, goal_img)
+                    draw_agent_path(screen, current_path)
+                    draw_agent(screen, game.agent_pos, game.has_key)
+                    win_rate = sum(recent_wins)
+                    draw_info(screen, f"{episode}/{TOTAL_EPISODES}", agent.epsilon, win_rate, strategy)
+                    pygame.display.flip()
+                    time.sleep(0.2) # Slow down visualization
+
                 path_reward = 0
                 if path:
                     path_reward += len(path) * STEP_PENALTY
@@ -270,7 +291,7 @@ def main():
                 print(f"Episode {episode} | Win Rate (last 100): {win_rate:.1f}% | Epsilon: {agent.epsilon:.3f}")
 
         final_win_rate = sum(recent_wins)
-        if SAVE_Q_TABLE_ON_EXIT: agent.save()
+        if SAVE_Q_TABLE_ON_EXIT and running: agent.save()
         if win_rate_history: plot_metrics(win_rate_history)
 
     # Demonstration
