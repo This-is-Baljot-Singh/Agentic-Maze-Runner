@@ -154,7 +154,7 @@ class QLearningAgent:
     def load(self): 
         self.q_table = np.load(Q_TABLE_FILENAME)
         print(f"Q-table loaded from {Q_TABLE_FILENAME}")
-
+    
 # --- Drawing and Plotting ---
 def draw_grid(screen, game, wall_texture, trap_img, key_img, goal_img):
     for r in range(GRID_HEIGHT):
