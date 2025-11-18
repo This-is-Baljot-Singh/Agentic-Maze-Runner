@@ -1,13 +1,47 @@
 import pygame
 import time
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from config import *
 from environment import MazeGame, draw_game_state
 from agent import QLearningAgent
 from utils import a_star_path
 
+# --- NEW: Heatmap Class ---
+class HeatmapVisualizer:
+    def __init__(self, grid_height, grid_width):
+        self.height = grid_height
+        self.width = grid_width
+        self.death_map = np.zeros((grid_height, grid_width))
+        self.visit_map = np.zeros((grid_height, grid_width))
+
+    def record_death(self, pos):
+        self.death_map[pos] += 1
+
+    def record_visit(self, pos):
+        self.visit_map[pos] += 1
+
+    def show_heatmap(self):
+        print("Generating Heatmap...")
+        plt.figure(figsize=(10, 5))
+        
+        # Plot 1: Death Heatmap
+        plt.subplot(1, 2, 1)
+        sns.heatmap(self.death_map, cmap="Reds", cbar=True, linewidths=0.1, linecolor='gray')
+        plt.title("Agent Death Zones (Risk Analysis)")
+        plt.xlabel("Grid X"); plt.ylabel("Grid Y")
+
+        # Plot 2: Traversal Heatmap (Where did it walk?)
+        plt.subplot(1, 2, 2)
+        sns.heatmap(self.visit_map, cmap="Blues", cbar=True, linewidths=0.1, linecolor='gray')
+        plt.title("Agent Traversal Patterns")
+        plt.xlabel("Grid X"); plt.ylabel("Grid Y")
+
+        plt.tight_layout()
+        plt.show()
+
 def load_assets():
-    # Reusing asset loading from main.py
     try:
         wall = pygame.image.load("assets/Brick_Wall.png").convert()
         wall = pygame.transform.scale(wall, (CELL_SIZE, CELL_SIZE))
@@ -24,125 +58,103 @@ def load_assets():
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-    pygame.display.set_caption("Maze Runner - FINAL DEMO")
-    clock = pygame.time.Clock()
+    pygame.display.set_caption("Maze Runner - FINAL DEMO + ANALYTICS")
     
     assets = load_assets()
     game = MazeGame()
     agent = QLearningAgent()
     
-    # --- CRITICAL: LOAD BRAIN & DISABLE RANDOMNESS ---
+    # Initialize Heatmap Tracker
+    analyzer = HeatmapVisualizer(GRID_HEIGHT, GRID_WIDTH)
+
     if not agent.load():
         print(f"Error: Could not find {Q_TABLE_FILENAME}. Run main.py to train first!")
         return
     
-    agent.epsilon = 0.0  # 0% Randomness (Pure Intelligence)
+    agent.epsilon = 0.0 
     
-    num_demos = 5
-    print(f"Starting {num_demos} Demo Episodes...")
+    # INCREASE DEMO COUNT FOR BETTER DATA
+    num_demos = 10 
+    print(f"Starting {num_demos} Demo Episodes for Data Collection...")
 
     for episode in range(1, num_demos + 1):
-        game.generate_maze() # New maze every time
+        game.generate_maze()
         state = game.reset()
         done = False
         
         print(f"--- Demo {episode} ---")
         
         while not done:
-            # Check for quit
             for event in pygame.event.get():
                 if event.type == pygame.QUIT: return
 
-            # 1. Agent decides STRATEGY (Go to Key vs Go to Goal)
             action = agent.choose_action(state)
-            
-            if action == 0 and not game.has_key:
-                target = game.key_pos
-                strategy = "Target: KEY"
-            else:
-                target = game.goal_pos
-                strategy = "Target: GOAL"
+            target = game.key_pos if (action == 0 and not game.has_key) else game.goal_pos
+            strategy = "Target: KEY" if target == game.key_pos else "Target: GOAL"
 
-            # 2. Calculate Path (A*)
             path = a_star_path(game.grid, game.agent_pos, target)
             
             if path:
                 path_blocked = False
-                
                 for next_step in path:
-                    # Handle Quit mid-walk
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT: return
                     
-                    # Store positions BEFORE moving to check for "swaps"
-                    old_agent_pos = game.agent_pos
+                    # --- ANALYTICS: Record Step ---
+                    analyzer.record_visit(next_step)
                     
-                    # 1. Move Agent
+                    old_agent_pos = game.agent_pos
                     game.agent_pos = next_step
                     
-                    # 2. Check: Did Agent walk DIRECTLY into an Enemy?
-                    # (This handles if the agent walks into an enemy that hasn't moved yet)
+                    # Check pre-move collision
                     for enemy in game.enemies:
                         if game.agent_pos == enemy.pos:
                             print("   -> Ran into an enemy!")
+                            analyzer.record_death(game.agent_pos) # RECORD DEATH
                             path_blocked = True
                             break
                     if path_blocked: 
-                        done = True
-                        break
+                        done = True; break
 
-                    # 3. Move Enemies & Check for Tunneling
+                    # Move Enemies
                     for enemy in game.enemies:
                         old_enemy_pos = enemy.pos
                         enemy.move(game.grid)
                         
-                        # Check A: Did Enemy walk onto Agent?
                         if enemy.pos == game.agent_pos:
                             print("   -> Enemy caught Agent!")
+                            analyzer.record_death(game.agent_pos) # RECORD DEATH
                             path_blocked = True
                         
-                        # Check B: The "Tunneling" Fix (Swap Detection)
-                        # If Agent moved to Enemy's old spot... AND Enemy moved to Agent's old spot
                         if game.agent_pos == old_enemy_pos and enemy.pos == old_agent_pos:
-                            print("   -> Head-on collision (Tunneling fixed)!")
+                            print("   -> Head-on collision!")
+                            analyzer.record_death(game.agent_pos) # RECORD DEATH
                             path_blocked = True
 
                     if path_blocked:
-                        done = True # Game Over (Loss)
-                        break # Stop walking the path
+                        done = True; break
                         
-                    # Draw Screen
+                    # Visualization (Faster speed for data collection)
                     screen.fill(GRAY)
                     draw_game_state(screen, game, assets, path)
-                    
-                    # Draw Text overlay
-                    font = pygame.font.Font(None, 36)
-                    text = font.render(f"Demo {episode} | {strategy}", True, WHITE)
-                    pygame.draw.rect(screen, BLACK, (0, WINDOW_HEIGHT-40, WINDOW_WIDTH, 40))
-                    screen.blit(text, (20, WINDOW_HEIGHT-35))
-                    
                     pygame.display.flip()
-                    time.sleep(0.1) 
+                    # time.sleep(0.05) # Reduced sleep for faster data collection
                 
-                # Check Objectives at end of path (only if didn't die)
                 if not path_blocked:
-                    if game.agent_pos == game.key_pos:
-                        game.has_key = True
-                        print("   -> Key Collected.")
-                        
+                    if game.agent_pos == game.key_pos: game.has_key = True
                     if game.agent_pos == game.goal_pos and game.has_key:
                         print("   -> ESCAPED! (Win)")
                         done = True
-                        time.sleep(1) 
             else:
-                # No path found (Trapped)
                 print("   -> No path found!")
                 done = True
             
-            # Update State
             state = game.get_state()
-
+    
     pygame.quit()
+    
+    # --- SHOW THE ANALYTICS ---
+    analyzer.show_heatmap()
 
 if __name__ == "__main__":
     main()
