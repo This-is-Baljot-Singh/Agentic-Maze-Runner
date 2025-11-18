@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Pygame](https://img.shields.io/badge/Library-Pygame-yellow)
 ![AI](https://img.shields.io/badge/AI-Q--Learning%20%2B%20A*-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+![License](https://shields.fly.dev/badge/license-MIT-green)
 
 An advanced pathfinding simulation combining **Reinforcement Learning (Q-Learning)** with **Heuristic Search (A*)** to navigate dynamic, procedurally generated mazes. This project demonstrates how a hybrid AI architecture can solve complex navigation tasks involving multiple objectives, static traps, and dynamic adversaries.
 
