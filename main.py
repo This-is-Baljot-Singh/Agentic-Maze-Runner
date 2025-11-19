@@ -126,11 +126,13 @@ def main():
                 if not path_interrupted:
                     reward += step_count_in_path * STEP_PENALTY
                     
-                    # Check Key/Goal logic (Existing logic)
-                    if game.agent_pos == game.key_pos:
-                        game.has_key = True
-                        reward += KEY_REWARD
+                    # --- FIX: Update Collected Keys correctly ---
+                    if game.agent_pos in game.all_key_positions:
+                        if game.agent_pos not in game.collected_keys:
+                            game.collected_keys.append(game.agent_pos)
+                            reward += KEY_REWARD
                     
+                    # Win condition check
                     if game.agent_pos == game.goal_pos and game.has_key:
                         game.goal_discovered = True
                         reward += GOAL_REWARD
