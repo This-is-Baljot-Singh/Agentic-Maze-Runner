@@ -7,7 +7,7 @@
 
 An advanced pathfinding simulation combining **Reinforcement Learning (Q-Learning)** with **Heuristic Search (A*)** to navigate dynamic, procedurally generated mazes. This project demonstrates how a hybrid AI architecture can solve complex navigation tasks involving multiple objectives, static traps, and dynamic adversaries.
 
-![Project Screenshot](assets/game_screenshot.png) ## 🌟 Features
+![Project Screenshot](assets/Config%20UI.png) ## 🌟 Features
 
 ### 🧠 Hybrid AI Architecture
 * **Strategic Layer (Q-Learning):** High-level decision making (e.g., "Should I go for the key or the goal?").
